@@ -1,166 +1,239 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Professional AI Lesson Planner - Fedrick MB</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @media print { .no-print { display: none; } #print-area { width: 100%; border: none; } }
-        .loading-dots:after { content: ' .'; animation: dots 1.5s steps(5, end) infinite; }
-        @keyframes dots { 0%, 20% { color: rgba(0,0,0,0); text-shadow: .5em 0 0 rgba(0,0,0,0), 1em 0 0 rgba(0,0,0,0); } 40% { color: #1e40af; text-shadow: .5em 0 0 rgba(0,0,0,0), 1em 0 0 rgba(0,0,0,0); } 60% { text-shadow: .5em 0 0 #1e40af, 1em 0 0 rgba(0,0,0,0); } 80%, 100% { text-shadow: .5em 0 0 #1e40af, 1em 0 0 #1e40af; } }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; border: 2px solid black; }
-        th, td { border: 1px solid black; padding: 10px; text-align: left; vertical-align: top; font-size: 13px; color: black; }
-        th { background-color: #f3f4f6; font-weight: bold; }
-    </style>
-</head>
-<body class="bg-slate-50 font-sans">
+import React, { useState } from 'react';
+import { Printer, Download, MessageCircle, Sparkles, Send, ShieldCheck, UserPlus, Info } from 'lucide-react';
 
-    <div class="container mx-auto p-4 lg:p-8">
-        <header class="mb-8 text-center no-print">
-            <h1 class="text-3xl font-extrabold text-blue-900 uppercase">FEDRICK MB AI PLANNER</h1>
-            <p class="text-slate-500 text-sm">Competence-Based Curriculum Standard</p>
-        </header>
+const App = () => {
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [form, setForm] = useState({
+    school: '', teacher: '', form: '', subject: '', date: '', totalTime: '40',
+    mainComp: '', specComp: '', mainAct: '', specAct: '', resources: '', refs: ''
+  });
 
-        <div class="flex flex-col lg:flex-row gap-8">
-            <!-- INPUT FORM -->
-            <div class="w-full lg:w-1/3 bg-white p-6 rounded-2xl shadow-xl no-print border border-slate-200">
-                <h2 class="text-lg font-bold mb-4 text-blue-700 border-b pb-2 uppercase text-xs">Preliminary Parts</h2>
-                <div class="space-y-3">
-                    <input id="school" type="text" placeholder="School Name" class="w-full p-2.5 border rounded-lg text-sm">
-                    <input id="teacher" type="text" placeholder="Teacher's Name" class="w-full p-2.5 border rounded-lg text-sm">
-                    <div class="grid grid-cols-2 gap-2">
-                        <input id="form" type="text" placeholder="Form" class="w-full p-2.5 border rounded-lg text-sm">
-                        <input id="subject" type="text" placeholder="Subject" class="w-full p-2.5 border rounded-lg text-sm">
-                    </div>
-                    <textarea id="mainComp" placeholder="Main Competence" class="w-full p-2 border rounded-lg text-xs h-14"></textarea>
-                    <textarea id="specComp" placeholder="Specific Competence" class="w-full p-2 border rounded-lg text-xs h-14"></textarea>
-                    <textarea id="specActivity" placeholder="Specific Learning Activity" class="w-full p-2 border rounded-lg text-xs h-14"></textarea>
-                    <textarea id="resources" placeholder="Resources" class="w-full p-2 border rounded-lg text-xs h-14"></textarea>
-                    <textarea id="refs" placeholder="References" class="w-full p-2 border rounded-lg text-xs h-14"></textarea>
-                    
-                    <button onclick="runFedrickAI()" id="genBtn" class="w-full bg-blue-800 text-white font-bold py-4 rounded-xl hover:bg-black shadow-lg">
-                        GENERATE LESSON PLAN
-                    </button>
+  const apiKey = ""; 
 
-                    <a href="https://wa.me/255616435291" target="_blank" class="block text-center mt-3 text-green-700 text-xs font-bold bg-green-50 p-2 rounded-lg border border-green-200">
-                        💬 Contact Fedrick (0616435291)
-                    </a>
+  const handleInput = (e) => setForm({ ...form, [e.target.id]: e.target.value });
+
+  const generateLesson = async () => {
+    if (!form.subject || !form.specAct) return alert("Tafadhali jaza Somo na Specific Learning Activity!");
+    setLoading(true);
+
+    const t = parseInt(form.totalTime) || 40;
+    const m = {
+      intro: Math.round(t * 0.125),
+      dev: Math.round(t * 0.50),
+      design: Math.round(t * 0.25),
+      real: Math.round(t * 0.125)
+    };
+
+    const systemPrompt = `You are an expert Education Officer in Tanzania following the 5Es and 4Cs presentation guidelines.
+    Your task is to create a Lesson Development table.
+    
+    STAGES & RULES:
+    1. INTRODUCTION (${m.intro}m): Use brainstorming/Think-pair-share. Connect to prior knowledge.
+    2. COMPETENCE DEVELOPMENT (${m.dev}m): Active learning (reading, watching, discussing). Students MUST work together (Communication/Collaboration).
+    3. DESIGN (${m.design}m): Deepen learning. Application to real-life context. Experiments or practical activities using ${form.resources}.
+    4. REALISATION (${m.real}m): Assessment/Evaluation (Homework, Quiz, Bingo).
+    
+    CRITICAL REQUIREMENTS:
+    - Teaching Activities: Start with "To..." (e.g., To guide students to use ${form.resources} to...).
+    - Assessment Criteria: MUST end with "...are given", "...are explained", "...are identified", or "...are discussed".
+    - Teaching Methods: Explicitly mention Think-pair-share, group discussion, etc.
+    - Resources: Explicitly mention HOW ${form.resources} are being used in the activities.`;
+
+    const userQuery = `Subject: ${form.subject}. Specific Activity: ${form.specAct}. Resources: ${form.resources}. 
+    Create the table with columns: Stage, Time (min), Teaching Activity, Learning Activity, Assessment Criteria. Output ONLY the HTML table code.`;
+
+    try {
+      // Using the supported preview model to avoid v1beta errors seen in screenshots
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: userQuery }] }],
+          systemInstruction: { parts: [{ text: systemPrompt }] }
+        })
+      });
+
+      const data = await response.json();
+      if (data.candidates && data.candidates[0].content.parts[0].text) {
+        let html = data.candidates[0].content.parts[0].text.replace(/```html|```/g, '').trim();
+        setResult({ table: html, m });
+      } else {
+        throw new Error("No data returned");
+      }
+    } catch (err) {
+      alert("KOSA: AI imekataa. Hakikisha umechagua model sahihi au jaribu tena.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-10">
+      {/* Navbar */}
+      <nav className="bg-white border-b p-4 mb-6 no-print flex justify-between items-center sticky top-0 z-50 shadow-sm">
+        <div className="flex items-center gap-2">
+          <div className="bg-blue-900 p-2 rounded-lg text-white"><ShieldCheck size={20}/></div>
+          <h1 className="font-black text-xl tracking-tighter text-blue-900">FEDRICK MB <span className="text-orange-600">AI PRO</span></h1>
+        </div>
+        <button onClick={() => window.open(`https://wa.me/255616435291?text=Habari Fedrick, nina swali kuhusu mfumo wa AI.`)} 
+          className="flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-full text-xs font-bold hover:bg-green-700 shadow-md">
+          <MessageCircle size={16}/> MESEJI WHATSAPP
+        </button>
+      </nav>
+
+      <div className="max-w-7xl mx-auto px-4 grid grid-cols-1 lg:grid-cols-12 gap-8">
+        {/* Form Panel */}
+        <div className="lg:col-span-4 space-y-4 no-print">
+          <div className="bg-white p-6 rounded-3xl shadow-xl border border-blue-100">
+            <h2 className="text-xs font-black uppercase text-blue-900 mb-5 flex items-center gap-2 border-b pb-2">
+              <UserPlus size={14}/> Preliminary Information
+            </h2>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-400 ml-2 uppercase">School & Teacher</label>
+                <input id="school" onChange={handleInput} placeholder="Wella Secondary School" className="w-full p-3 border-2 border-slate-100 rounded-xl text-sm focus:border-blue-900 outline-none" />
+                <input id="teacher" onChange={handleInput} placeholder="Teacher's Name" className="w-full p-3 border-2 border-slate-100 rounded-xl text-sm mt-1 focus:border-blue-900 outline-none" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                   <label className="text-[10px] font-bold text-slate-400 ml-2 uppercase">Form & Time</label>
+                   <input id="form" onChange={handleInput} placeholder="Form One D" className="w-full p-3 border-2 border-slate-100 rounded-xl text-sm focus:border-blue-900 outline-none" />
+                   <input id="totalTime" onChange={handleInput} type="number" placeholder="80 Min" className="w-full p-3 border-2 border-slate-100 rounded-xl text-sm mt-1 focus:border-blue-900 outline-none" />
                 </div>
+                <div className="space-y-1">
+                   <label className="text-[10px] font-bold text-slate-400 ml-2 uppercase">Subject & Date</label>
+                   <input id="subject" onChange={handleInput} placeholder="Basic Mathematics" className="w-full p-3 border-2 border-slate-100 rounded-xl text-sm focus:border-blue-900 outline-none" />
+                   <input id="date" onChange={handleInput} type="text" placeholder="28/03/2026" className="w-full p-3 border-2 border-slate-100 rounded-xl text-sm mt-1 focus:border-blue-900 outline-none" />
+                </div>
+              </div>
+
+              <textarea id="mainComp" onChange={handleInput} placeholder="Main Competence" className="w-full p-3 border-2 border-slate-100 rounded-xl text-xs h-16"></textarea>
+              <textarea id="specComp" onChange={handleInput} placeholder="Specific Competence" className="w-full p-3 border-2 border-slate-100 rounded-xl text-xs h-16"></textarea>
+              <textarea id="mainAct" onChange={handleInput} placeholder="Main Learning Activity" className="w-full p-3 border-2 border-slate-100 rounded-xl text-xs h-16"></textarea>
+              <textarea id="specAct" onChange={handleInput} placeholder="Specific Learning Activity" className="w-full p-3 border-2 border-slate-100 rounded-xl text-xs h-16"></textarea>
+              <textarea id="resources" onChange={handleInput} placeholder="T&L Resources (e.g. Manila Sheets)" className="w-full p-3 border-2 border-slate-100 rounded-xl text-xs h-14"></textarea>
+              <textarea id="refs" onChange={handleInput} placeholder="References (e.g. TIE 2023)" className="w-full p-3 border-2 border-slate-100 rounded-xl text-xs h-14"></textarea>
+
+              <button onClick={generateLesson} disabled={loading} className="w-full bg-blue-900 text-white font-black py-4 rounded-2xl shadow-xl hover:bg-black transition-all flex items-center justify-center gap-2 transform active:scale-95">
+                {loading ? "AI INAFIKIRI..." : "GENERATE SMART PLAN"} <Sparkles size={18}/>
+              </button>
             </div>
-
-            <!-- RESULT -->
-            <div class="w-full lg:w-2/3 bg-white p-8 rounded-2xl shadow-xl border border-slate-100 min-h-[700px] relative">
-                <div id="loader" class="hidden absolute inset-0 bg-white/95 z-50 flex flex-col items-center justify-center rounded-2xl">
-                    <div class="w-12 h-12 border-4 border-slate-200 border-t-blue-700 rounded-full animate-spin mb-4"></div>
-                    <p class="text-blue-900 font-bold loading-dots">Fedrick's AI is processing</p>
-                </div>
-
-                <div id="print-area">
-                    <div id="result-box" class="text-slate-800">
-                        <div class="text-center py-40 opacity-20">
-                            <h2 class="text-5xl font-bold italic">FEDRICK MB</h2>
-                            <p>Fill form to generate</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div id="action-bar" class="hidden mt-6 flex gap-3 no-print border-t pt-5">
-                    <button onclick="window.print()" class="bg-black text-white px-8 py-3 rounded-xl font-bold">PRINT / PDF</button>
-                    <button onclick="location.reload()" class="bg-slate-100 text-slate-500 px-8 py-3 rounded-xl font-bold">RESET</button>
-                </div>
-            </div>
+          </div>
         </div>
 
-        <footer class="mt-10 text-center text-slate-400 no-print text-xs border-t pt-5">
-            <p>&copy; 2026 <strong>FEDRICK MB</strong> | 0616435291</p>
-        </footer>
-    </div>
+        {/* Output Panel */}
+        <div className="lg:col-span-8 bg-white p-10 md:p-14 rounded-3xl shadow-2xl border min-h-[1100px] print:p-0 print:shadow-none print:border-none">
+          {!result ? (
+            <div className="h-full flex flex-col items-center justify-center py-60 text-slate-300">
+              <Info size={60} className="mb-6 opacity-20" />
+              <p className="font-black uppercase tracking-widest text-sm opacity-30">Hakuna Andiko Lililoandaliwa</p>
+            </div>
+          ) : (
+            <div id="print-area">
+              <div className="text-center mb-10">
+                <h2 className="text-3xl font-black underline uppercase tracking-tight text-black">LESSON PLAN</h2>
+              </div>
 
-    <script>
-        const API_KEY = "AIzaSyA9ykLQKNpmJZQbHNP9Uh_MBr3CseLlTRw";
+              {/* Preliminary Area (Exact as Handwritten Image) */}
+              <div className="text-[14px] leading-relaxed text-black mb-10 font-medium">
+                <div className="flex justify-between border-b-2 border-black pb-2 mb-3">
+                  <span className="uppercase"><strong>NAME OF SCHOOL:</strong> {form.school || '................................'}</span>
+                  <span className="uppercase"><strong>FORM:</strong> {form.form || '..........'}</span>
+                </div>
+                <div className="border-b-2 border-black pb-2 mb-3">
+                  <span className="uppercase"><strong>TEACHER'S NAME:</strong> {form.teacher || '................................................'}</span>
+                </div>
+                <div className="flex justify-between border-b-2 border-black pb-2 mb-3">
+                  <span className="uppercase"><strong>SUBJECT:</strong> {form.subject || '................................'}</span>
+                  <span className="uppercase"><strong>DATE:</strong> {form.date || '................'}</span>
+                  <span className="uppercase"><strong>TIME:</strong> {form.totalTime} MIN</span>
+                </div>
 
-        async function runFedrickAI() {
-            const getVal = (id) => document.getElementById(id).value;
-            const btn = document.getElementById('genBtn');
-            const loader = document.getElementById('loader');
-            const resultBox = document.getElementById('result-box');
+                {/* Students Table */}
+                <div className="mt-8 mb-8">
+                  <table className="w-full border-2 border-black text-center text-xs">
+                    <thead>
+                      <tr>
+                        <th colSpan="3" className="border-2 border-black p-2 font-black">NUMBER OF STUDENTS REGISTERED</th>
+                        <th colSpan="3" className="border-2 border-black p-2 font-black">NUMBER OF STUDENTS PRESENT</th>
+                      </tr>
+                      <tr>
+                        <th className="border-2 border-black p-1">GIRLS</th>
+                        <th className="border-2 border-black p-1">BOYS</th>
+                        <th className="border-2 border-black p-1 font-black">TOTAL</th>
+                        <th className="border-2 border-black p-1">GIRLS</th>
+                        <th className="border-2 border-black p-1">BOYS</th>
+                        <th className="border-2 border-black p-1 font-black">TOTAL</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="h-10">
+                        <td className="border-2 border-black"></td><td className="border-2 border-black"></td><td className="border-2 border-black"></td>
+                        <td className="border-2 border-black"></td><td className="border-2 border-black"></td><td className="border-2 border-black"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
 
-            if (!getVal('subject') || !getVal('specActivity')) {
-                alert("Please fill Subject and Specific Activity!");
-                return;
-            }
+                <div className="space-y-4 mt-10">
+                   <p className="uppercase"><strong>MAIN COMPETENCE:</strong> {form.mainComp || '................'}</p>
+                   <p className="uppercase"><strong>SPECIFIC COMPETENCE:</strong> {form.specComp || '................'}</p>
+                   <p className="uppercase"><strong>MAIN LEARNING ACTIVITY:</strong> {form.mainAct || '................'}</p>
+                   <p className="uppercase"><strong>SPECIFIC LEARNING ACTIVITY:</strong> {form.specAct || '................'}</p>
+                   <p className="uppercase"><strong>TEACHING AND LEARNING RESOURCES:</strong> {form.resources || '................'}</p>
+                   <p className="uppercase"><strong>REFERENCES:</strong> {form.refs || '................'}</p>
+                </div>
+              </div>
 
-            loader.classList.remove('hidden');
-            btn.disabled = true;
+              <div className="text-center my-10"><h3 className="text-xl font-black underline uppercase text-black">LESSON DEVELOPMENT</h3></div>
 
-            const prompt = `You are a curriculum expert. Generate ONLY the "Teaching and Learning Process" table in English.
-            Subject: ${getVal('subject')}. Activity: ${getVal('specActivity')}.
-            Structure: 4 columns (Stages/Time, Teaching Activities, Learning Activities, Assessment Criteria).
-            Stages: Introduction (05 min), Competence Development (20 min), Design (10 min), Realisation (05 min).
-            Mandatory: Every Teaching Activity MUST start with "To".
-            Return ONLY the HTML code for the <table> tag.`;
+              {/* AI Generated Table Content */}
+              <div className="rendered-table prose prose-sm max-w-none" dangerouslySetInnerHTML={{ __html: result.table }} />
 
-            // Function for exponential backoff retry
-            const fetchWithRetry = async (url, options, retries = 3) => {
-                for (let i = 0; i < retries; i++) {
-                    try {
-                        const res = await fetch(url, options);
-                        if (res.ok) return res;
-                    } catch (e) {
-                        if (i === retries - 1) throw e;
-                    }
-                    await new Promise(r => setTimeout(r, 1000 * (i + 1)));
-                }
-            };
+              <div className="mt-14 border-t-4 border-black pt-6">
+                <p className="font-black text-sm underline uppercase mb-2 text-black">REMARKS:</p>
+                <div className="h-32 border-b-2 border-dotted border-black"></div>
+              </div>
 
-            try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`;
-                const response = await fetchWithRetry(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                });
+              <footer className="mt-12 flex justify-between items-end opacity-40 text-[10px] font-black italic">
+                 <div>PRODUCED BY FEDRICK MB AI SYSTEM</div>
+                 <div>0616435291</div>
+              </footer>
+            </div>
+          )}
 
-                const json = await response.json();
-                
-                if (json.candidates && json.candidates[0].content) {
-                    let tableContent = json.candidates[0].content.parts[0].text;
-                    tableContent = tableContent.replace(/```html|```/g, '').trim();
+          {result && (
+            <div className="mt-10 flex gap-4 no-print border-t pt-8">
+              <button onClick={() => window.print()} className="bg-blue-900 text-white px-10 py-4 rounded-2xl font-black flex items-center gap-2 shadow-xl transform hover:-translate-y-1 transition-all">
+                <Printer size={18}/> PRINT DOCUMENT
+              </button>
+              <button onClick={() => window.location.reload()} className="bg-slate-100 text-slate-500 px-8 py-4 rounded-2xl font-bold border border-slate-200">
+                RESET PAGE
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
-                    resultBox.innerHTML = `
-                        <div class="text-center mb-6">
-                            <h2 class="text-2xl font-bold uppercase underline">LESSON PLAN</h2>
-                        </div>
-                        <div class="grid grid-cols-2 gap-y-2 text-[11px] mb-4 border-b-2 border-black pb-4">
-                            <p><strong>School:</strong> ${getVal('school') || '_____'}</p>
-                            <p><strong>Teacher:</strong> ${getVal('teacher') || '_____'}</p>
-                            <p><strong>Form:</strong> ${getVal('form') || '_____'}</p>
-                            <p><strong>Subject:</strong> ${getVal('subject') || '_____'}</p>
-                            <p><strong>Main Comp:</strong> ${getVal('mainComp') || '_____'}</p>
-                            <p><strong>Spec Comp:</strong> ${getVal('specComp') || '_____'}</p>
-                            <p><strong>Learning Activity:</strong> ${getVal('specActivity') || '_____'}</p>
-                            <p><strong>Resources:</strong> ${getVal('resources') || '_____'}</p>
-                            <p><strong>References:</strong> ${getVal('refs') || '_____'}</p>
-                        </div>
-                        <div class="ai-table">${tableContent}</div>
-                        <div class="mt-8 pt-4 border-t border-dotted border-black">
-                            <p class="text-[11px] italic"><strong>Remarks:</strong> .......................................................................................................................................................................................................................................................................................................................................................</p>
-                        </div>
-                    `;
-                    document.getElementById('action-bar').classList.remove('hidden');
-                } else {
-                    alert("AI is still processing. Please click the button again.");
-                }
-            } catch (err) {
-                alert("Connection Error. Please check your internet or try again.");
-                console.error(err);
-            } finally {
-                loader.classList.add('hidden');
-                btn.disabled = false;
-            }
+      <style>{`
+        .rendered-table table { width: 100%; border-collapse: collapse; border: 3px solid black; }
+        .rendered-table th, .rendered-table td { border: 2px solid black; padding: 12px; font-size: 13px; vertical-align: top; color: black; line-height: 1.6; }
+        .rendered-table th { background: #f1f5f9; text-transform: uppercase; font-weight: 900; }
+        .rendered-table td strong { color: #1e3a8a; }
+        @media print {
+          .no-print { display: none !important; }
+          body { background: white; padding: 0; margin: 0; }
+          .max-w-7xl { max-width: 100%; margin: 0; padding: 0; }
+          #print-area { padding: 40px; }
+          .rendered-table table { border: 3px solid black !important; }
+          .rendered-table th, .rendered-table td { border: 2px solid black !important; }
         }
-    </script>
-</body>
-</html>
+      `}</style>
+    </div>
+  );
+};
+
+export default App;
 
